@@ -1,9 +1,18 @@
 'use strict';
 
 var proxyquire = require('proxyquire');
+var thaliWifiInfrastructure = null;
+
 var ThaliMobile = proxyquire('thali/NextGeneration/thaliMobile', {
   './thaliConfig': {
     NON_TCP_PEER_UNAVAILABILITY_THRESHOLD: 500
+  },
+  './thaliWifiInfrastructure': function () {
+    // Capture thaliWifiInfrastructure created in thaliMobile
+    var RealThaliWifiInfrastructure =
+      require('thali/NextGeneration/thaliWifiInfrastructure');
+    thaliWifiInfrastructure = new RealThaliWifiInfrastructure();
+    return thaliWifiInfrastructure;
   }
 });
 var ThaliMobileNativeWrapper = require('thali/NextGeneration/thaliMobileNativeWrapper');
@@ -287,11 +296,88 @@ test('wifi peer is marked unavailable if announcements stop', function (t) {
   });
 });
 
+test('#getPeerHostInfo - error when peer has not been discovered yet',
+function (t) {
+  var connectionType = ThaliMobileNativeWrapper.connectionTypes.TCP_NATIVE;
+  ThaliMobile.getPeerHostInfo('foo', connectionType)
+    .then(function () {
+      t.fail('should never be called');
+      t.end();
+    })
+    .catch(function (err) {
+      t.equal(err.message, 'peer not available');
+      t.end();
+    });
+});
+
+function validatePeerHostInfoAgainstPeer(t, peerHostInfo, peer) {
+  var expectedKeys = ['hostAddress', 'portNumber', 'suggestedTCPTimeout'];
+  var actualKeys = Object.keys(peerHostInfo);
+  expectedKeys.sort();
+  actualKeys.sort();
+  t.deepEqual(actualKeys, expectedKeys, 'contains expected properties');
+  t.equal(peerHostInfo.hostAddress, peer.hostAddress, 'the same hostAddress');
+  t.equal(peerHostInfo.portNumber, peer.portNumber, 'the same portNumber');
+}
+
+test('#getPeerHostInfo - returns discovered cached native peer',
+  function () {
+    // This test is only for native connection (see wifi in the next test)
+    return global.NETWORK_TYPE !== ThaliMobile.networkTypes.NATIVE;
+  },
+  function (t) {
+    var peer = {
+      peerIdentifier: 'foo',
+      portNumber: 9999,
+      generation: 0,
+    };
+
+    ThaliMobileNativeWrapper.emitter.emit(
+      'nonTCPPeerAvailabilityChangedEvent',
+      peer
+    );
+
+    var connectionType = platform.isIOS ?
+      ThaliMobileNativeWrapper.connectionTypes.MULTI_PEER_CONNECTIVITY_FRAMEWORK :
+      ThaliMobileNativeWrapper.connectionTypes.BLUETOOTH;
+
+    ThaliMobile.getPeerHostInfo(peer.peerIdentifier, connectionType)
+    .then(function (peerHostInfo) {
+      validatePeerHostInfoAgainstPeer(t, peerHostInfo, peer);
+      t.end();
+    }).catch(t.end);
+  }
+);
+
+test('#getPeerHostInfo - returns discovered cached wifi peer',
+  function () {
+    // This test is only for wifi connection (see native in the previous test)
+    return global.NETWORK_TYPE !== ThaliMobile.networkTypes.WIFI;
+  },
+  function (t) {
+    var peer = {
+      peerIdentifier: 'foo',
+      portNumber: 9999,
+      generation: 0,
+    };
+
+    thaliWifiInfrastructure.emit('wifiPeerAvailabilityChanged', peer);
+
+    var connectionType = ThaliMobileNativeWrapper.connectionTypes.TCP_NATIVE;
+
+    ThaliMobile.getPeerHostInfo(peer.peerIdentifier, connectionType)
+    .then(function (peerHostInfo) {
+      validatePeerHostInfoAgainstPeer(t, peerHostInfo, peer);
+      t.end();
+    }).catch(t.end);
+  }
+);
+
 // From here onwards, tests work only with the mocked
 // up Mobile, because with real devices in CI, the Wifi
 // network is configured in a way that it doesn't allow
 // routing between peers.
-if (platform.isMobile) {
+if (platform._isRealMobile) {
   return;
 }
 
