@@ -932,6 +932,12 @@ var getExtendedPeer = function (peer, connectionType) {
 };
 
 var handlePeer = function (peer, connectionType) {
+  var cachedPeer = peerAvailabilities[connectionType][peer.peerIdentifier];
+  console.log(peer);
+  if (!cachedPeer && peer.becauseOfFailedConnection) {
+    ThaliMobileNativeWrapper.terminateListener(peer.peerIdentifier, 'KILL IT');
+    return;
+  }
   peer = getExtendedPeer(peer, connectionType);
   if (!updateAndCheckChanges(peer)) {
     return;
@@ -941,6 +947,7 @@ var handlePeer = function (peer, connectionType) {
   } else {
     changeCachedPeerAvailable(peer);
   }
+  logger.info('GOT PEER:', JSON.stringify(peer, null , 2));
   module.exports.emitter.emit('peerAvailabilityChanged', peer);
 };
 

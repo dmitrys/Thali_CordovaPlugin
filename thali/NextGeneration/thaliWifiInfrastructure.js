@@ -510,6 +510,7 @@ function () {
     // Generate a new USN value to flag that something has changed
     // in this peer.
     self.usn = 'urn:uuid:' + uuid.v4();
+    logger.info('MY UUID IS:' + self.usn);
 
     if (self.states.networkState.wifi !== 'on') {
       return self._rejectPerWifiState(reject);

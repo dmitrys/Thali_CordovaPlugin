@@ -69,10 +69,13 @@ var logInstanceOutput = function (data, instanceId) {
 
 var setListeners = function (instance, instanceId) {
   instanceLogs[instanceId] = '';
+  var file = require('fs')
+    .createWriteStream('logs/' + instanceId + '.log', 'utf8');
 
   instance.stdout
   .on('data', function (data) {
     logInstanceOutput(data, instanceId);
+    file.write(data);
 
     if (data.indexOf('PROCESS_ON_EXIT_') >= 0) {
       if (data.indexOf('PROCESS_ON_EXIT_FAILED') >= 0) {
@@ -94,14 +97,17 @@ var setListeners = function (instance, instanceId) {
   instance.stderr
   .on('data', function (data) {
     logInstanceOutput(data, instanceId);
+    file.write(data);
   });
   instance.on('error', function (err) {
     var error = 'Error : ' + err + '\n' + err.stack;
     logInstanceOutput(error, instanceId);
+    file.write(error);
   });
   instance.on('exit', function (code, signal) {
     var codeAndSignal = 'Exit code: ' + code + '. Exit signal: ' + signal;
     logInstanceOutput(codeAndSignal, instanceId);
+    file.end(codeAndSignal);
   });
 };
 

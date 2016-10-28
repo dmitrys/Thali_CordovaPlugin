@@ -255,7 +255,8 @@ function connectToRemotePeer(self, incoming, peerIdentifier, server,
       function (err, unParsedConnection) {
         if (err) {
           var error = new Error(err);
-          logger.warn(error);
+          logger.error('connect error via port ' + server.address().port +
+            ': ' + err);
           logger.debug('failedConnection');
           incoming && incoming.end();
           closeServer(self, server, error, true);
@@ -488,15 +489,18 @@ function createPeerListener(self, peerIdentifier, pleaseConnect) {
           });
 
           incoming.on('error', function (err) {
+            logger.info('incoming error: ' + err.stack);
             logger.debug('error on incoming socket - ' + err);
             incomingStream.destroy();
           });
 
           incoming.on('finish', function () {
+            logger.info('incoming finish');
             incomingStream.end();
           });
 
           incoming.on('close', function () {
+            logger.info('incoming close');
             incomingStream.destroy();
           });
 

@@ -7,6 +7,7 @@ var PeerAction = require('../thaliPeerPool/thaliPeerAction');
 var NotificationBeacons = require('./thaliNotificationBeacons');
 var EventEmitter = require('events').EventEmitter;
 var thaliConfig = require('../thaliConfig');
+var logger = require('../../ThaliLogger')('notificationAction');
 
 /** @module thaliNotificationAction */
 
@@ -128,8 +129,12 @@ ThaliNotificationAction.prototype.start = function (httpAgentPool) {
         family: 4
       };
 
+      logger.info('Start request to ' + options.hostname + ':' + options.port +
+        options.path);
       self._httpRequest = https.request(options,
-        self._responseCallback.bind(self));
+        self._responseCallback.bind(self, options));
+
+      self._httpRequest.pip = options.hostname + ':' + options.port + options.path;
 
       // Error event handler is fired on DNS resolution, TCP protocol,
       // or HTTP protocol errors. Or if the httpRequest.abort is called.
@@ -192,10 +197,16 @@ ThaliNotificationAction.prototype.getConnectionInformation = function () {
  * @param {http.IncomingMessage} res Response object to HTTP request
  * @returns {Function} returns a function that http.request can use
  */
-ThaliNotificationAction.prototype._responseCallback = function (res) {
+ThaliNotificationAction.prototype._responseCallback = function (options, res) {
   var self = this;
   var data = [];
   var totalReceived = 0;
+
+  logger.info(
+    'Got response from ' + options.hostname + ':' + options.port +
+    options.path + ' ' + res.statusCode + ' ' +
+    JSON.stringify(res.headers, null, 2)
+  );
 
   if (res.statusCode !== 200 ||
     res.headers['content-type'] !== 'application/octet-stream') {
@@ -257,6 +268,7 @@ ThaliNotificationAction.prototype._complete = function (resolution,
                                                         error) {
   if (!this._resolution) {
     this._resolution = resolution;
+    if (this._httpRequest) logger.info('Aborting request ' + this._httpRequest.pip);
     this._httpRequest && this._httpRequest.abort();
 
     // Sets our state to KILLED now that we are done

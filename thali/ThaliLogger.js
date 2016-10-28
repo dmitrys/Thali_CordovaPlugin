@@ -36,7 +36,7 @@ ThaliLogger.prototype.log = function (level, message, meta, callback) {
   }
   var now = new Date().toISOString()
     .replace(/T/, ' ')
-    .replace(/.[^.]+$/, '');
+    .replace(/Z$/, '');
   message = format(
     '%s - %s %s: \'%s\'',
     now, level.toUpperCase(), this.tag, message

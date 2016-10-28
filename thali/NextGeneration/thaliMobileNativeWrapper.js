@@ -88,7 +88,8 @@ module.exports._isStarted = function () {
 function failedConnectionHandler(failedConnection) {
   var peer = {
     peerIdentifier: failedConnection.peerIdentifier,
-    portNumber: null
+    portNumber: null,
+    becauseOfFailedConnection: true,
   };
   handlePeerAvailabilityChanged(peer);
   module.exports.emitter.emit('failedConnection', failedConnection);
@@ -138,7 +139,8 @@ function listenerRecreatedAfterFailureHandler(recreateAnnouncement) {
 
   module.exports.emitter.emit('nonTCPPeerAvailabilityChangedEvent', {
     peerIdentifier: recreateAnnouncement.peerIdentifier,
-    portNumber: recreateAnnouncement.portNumber
+    portNumber: recreateAnnouncement.portNumber,
+    recreatedAfterFailure: true
   });
 }
 
@@ -812,6 +814,8 @@ var handlePeerAvailabilityChanged = function (peer) {
                  'due to not being in started state');
     return;
   }
+  logger.info('GOT PEER: ' + JSON.stringify(peer, null, 2));
+
   return peerAvailabilityChangedQueue.enqueue(function (resolve) {
     var handlePeerUnavailable = function () {
       // TODO: Should the created peer listener be cleaned up when
@@ -819,7 +823,8 @@ var handlePeerAvailabilityChanged = function (peer) {
       // for that?
       module.exports.emitter.emit('nonTCPPeerAvailabilityChangedEvent', {
         peerIdentifier: peer.peerIdentifier,
-        portNumber: null
+        portNumber: null,
+        becauseOfFailedConnection: peer.becauseOfFailedConnection
       });
       resolve();
     };

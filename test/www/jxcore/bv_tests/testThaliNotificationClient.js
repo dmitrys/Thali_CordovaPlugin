@@ -1,5 +1,6 @@
 'use strict';
 var tape = require('../lib/thaliTape');
+var net = require('net');
 var express = require('express');
 var crypto = require('crypto');
 var sinon = require('sinon');
@@ -9,6 +10,7 @@ var httpTester = require('../lib/httpTester.js');
 var PeerAction = require('thali/NextGeneration/thaliPeerPool/thaliPeerAction');
 var PeerDictionary = require('thali/NextGeneration/notification/thaliPeerDictionary');
 
+var ThaliMobile = require('thali/NextGeneration/thaliMobile');
 var ThaliPeerDictionary =
   require('thali/NextGeneration/notification/thaliPeerDictionary');
 var ThaliNotificationClient =
@@ -558,4 +560,5 @@ test('hostaddress is removed when the action is running. ', function (t) {
     t.end();
   }, 2000);
 });
+
 
