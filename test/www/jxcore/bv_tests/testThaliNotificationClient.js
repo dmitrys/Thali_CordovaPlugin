@@ -64,7 +64,7 @@ var GlobalVariables = function () {
 
   this.TCPPeerHostInfo = {
     hostAddress: '127.0.0.1',
-    portNumber: 0,
+    portNumber: 'will be updated at globals initialization',
     suggestedTCPTimeout: 10000
   };
 
@@ -281,15 +281,15 @@ test('Received beacons with no values for us', function (t) {
         });
       }).catch(function (err) {
         t.fail('This action should not fail!');
-        finalizeTest();
+        finalizeTest(err);
       });
     }
   );
 
-  var finalizeTest = function () {
+  var finalizeTest = function (err) {
     getPeerHostInfoStub.restore();
     enqueueStub.restore();
-    t.end();
+    t.end(err);
   };
 
   httpTester.runServer(globals.expressRouter,
@@ -639,3 +639,54 @@ test('hostaddress is removed when the action is running. ', function (t) {
   }, 2000);
 });
 
+// FIXME: INCOMPLETE TEST.
+// It tests only race condition described in #1510, but not solution.
+test.only('notification client correctly handles peer availability changes ' +
+'of the same peer', function (t) {
+  globals.TCPPeerHostInfo.hostAddress = 'unresolvable_hostname';
+
+  var notificationClient =
+    new ThaliNotificationClient(globals.peerPoolInterface,
+      globals.targetDeviceKeyExchangeObjects[0]);
+
+  var callsCount = 0;
+
+  var enqueue = function (action) {
+    callsCount++;
+
+    switch (callsCount) {
+      case 1:
+        var keepAliveAgent = new http.Agent({ keepAlive: true });
+        action.start(keepAliveAgent).then( function () {
+          t.fail('Should not succeed');
+        }).catch( function (err) {
+          // At this point action has fired Resolved event with network problem
+          // resolution and notificationCliend scheduled retry for the failed
+          // action. We are going to fire new peerAvailabilityChanged event with
+          // the same peer id but different generation. Notification action
+          // should correctly handle this
+          globals.TCPEvent.generation++;
+          notificationClient._peerAvailabilityChanged(globals.TCPEvent);
+        });
+        return;
+      case 2:
+        setImmediate(function () {
+          action.kill();
+          enqueueStub.restore();
+          getPeerHostInfoStub.restore();
+          // notificationClient enqueues action and then synchronously updates
+          // peerDictionary with enqueued action. If we stop notificationClient
+          // inside enqueue stack it will fail.
+          notificationClient.stop();
+          t.end();
+        });
+        return;
+    }
+  };
+
+  var enqueueStub = sinon.stub(globals.peerPoolInterface, 'enqueue', enqueue);
+  var getPeerHostInfoStub = stubGetPeerHostInfo();
+
+  notificationClient.start([globals.sourcePublicKey]);
+  notificationClient._peerAvailabilityChanged(globals.TCPEvent);
+});
