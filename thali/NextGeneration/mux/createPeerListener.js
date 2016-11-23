@@ -24,6 +24,7 @@ function closeServer(self, server, failedConnectionErr, canRetry)
   server._closing = true;
   server.closeAll();
   server._mux && server._mux.destroy();
+  console.log('SERVER._MUX = NULL');
   server._mux = null;
   delete self._peerServers[server._peerIdentifier];
   if (failedConnectionErr) {
@@ -196,6 +197,7 @@ function multiplexToNativeListener(self, listenerOrIncomingConnection, server,
 
       outgoing.pipe(mux).pipe(outgoing);
 
+      console.log('SERVER._MUX = NEW MUX');
       server._mux = mux;
 
       if (cb) {

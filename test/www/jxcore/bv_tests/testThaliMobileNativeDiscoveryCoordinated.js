@@ -224,7 +224,9 @@ test('check latest peer discovery', function() {
     // peerAvailabilityChanged events for peers whose state have not changed.
     // This is o.k. because thaliMobile cleans it up. But iOS doesn't do this
     // and so this test isn't useful there.
-    return platform.isIOS;
+    //
+    // Update: Android doesn't do it anymore
+    return true;
   },
   function (t) {
     testTimeout(t);

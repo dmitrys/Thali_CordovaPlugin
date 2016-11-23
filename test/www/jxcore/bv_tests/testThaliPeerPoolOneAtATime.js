@@ -138,12 +138,17 @@ test('One action on bluetooth',
   },
   function (t) {
     var action = new TestPeerAction('peerID', connectionTypes.BLUETOOTH,
-        ThaliNotificationAction.ACTION_TYPE, t);
+      ThaliNotificationAction.ACTION_TYPE, t);
     var killSpy = sinon.spy(action, 'kill');
     testThaliPeerPoolOneAtATime.start();
-    t.notOk(testThaliPeerPoolOneAtATime.enqueue(action), 'Got null');
+    t.equal(
+      testThaliPeerPoolOneAtATime.enqueue(action), null,
+      'Got null'
+    );
     action.startPromise
       .then(function () {
+        // FIXME: there is race condition when startPromise has been resolved
+        // before action is killed
         t.ok(killSpy.called, 'Got killed at least once');
       })
       .catch(function (err) {
