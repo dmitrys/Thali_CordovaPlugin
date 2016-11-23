@@ -212,7 +212,7 @@ function matchDocsInChanges(pouchDB, docs, thaliPeerReplicationAction) {
           }
         })
         .then(resolve);
-      }, ThaliReplicationPeerAction.PUSH_LAST_SYNC_UPDATE_MILLISECONDS);
+      }, 2500);
     }).on ('error', function (err) {
       reject('got error ' + err);
     });
